@@ -1,5 +1,5 @@
 import struct
-import usb.core
+import usb.core  # type: ignore[import-untyped]
 
 from radiacode.bytes_buffer import BytesBuffer
 

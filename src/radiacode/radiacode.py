@@ -140,7 +140,7 @@ class RadiaCode:
         assert retcode == 1
         assert r.size() == 0
 
-    def batch_read_vsfrs(self, vsfr_ids: list[VSFR]) -> tuple[int | float]:
+    def batch_read_vsfrs(self, vsfr_ids: list[VSFR]) -> list[int | float]:
         """Read multiple VSFRs
 
         Args:

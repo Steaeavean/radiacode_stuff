@@ -1,6 +1,10 @@
 import struct
 import platform
 import time
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from radiacode.bytes_buffer import BytesBuffer
 
 
 class DeviceNotFound(Exception):
@@ -13,16 +17,19 @@ class ConnectionClosed(Exception):
 
 _have_bluetooth = True
 try:
-    from bluepy.btle import BTLEDisconnectError, DefaultDelegate, Peripheral
+    from bluepy.btle import BTLEDisconnectError, DefaultDelegate, Peripheral  # type: ignore[import-not-found]
 except ImportError:
     _have_bluetooth = False
 
 if platform.system() == 'Darwin' or _have_bluetooth is False:
 
     class Bluetooth:
-        def __init__(self):
+        def __init__(self, mac: str | None = None, poll_interval: float = 0.01):
             # Create an empty class if we are on MacOS
             pass
+
+        def execute(self, req: bytes) -> 'BytesBuffer':
+            raise ConnectionClosed('Bluetooth is not supported on this platform')
 
         def close(self):
             # No resources to release on MacOS
@@ -31,7 +38,7 @@ if platform.system() == 'Darwin' or _have_bluetooth is False:
 else:
     from radiacode.bytes_buffer import BytesBuffer
 
-    class Bluetooth(DefaultDelegate):
+    class Bluetooth(DefaultDelegate):  # type: ignore[no-redef]
         def __init__(self, mac, poll_interval: float = 0.01):
             """
             Initialize Bluetooth connection.
