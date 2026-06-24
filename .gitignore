@@ -8,6 +8,9 @@ dist/
 .aider*
 DEVICES.local.md
 
+# Cursor IDE local tooling (skills, rules, state) — not part of the repo
+.cursor/
+
 # phase0 validation artifacts
 phase0/.venv/
 phase0/uv.lock
