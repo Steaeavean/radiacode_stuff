@@ -93,10 +93,15 @@ Connection options (choose one):
     print(f'Firmware: {rc.fw_version()}')
     print(f'Spectrum: {rc.spectrum()}')
     print('--- DataBuf (Ctrl-C to stop) ---')
-    while True:
-        for v in rc.data_buf():
-            print(v.dt.isoformat(), v)
-        time.sleep(2)
+    try:
+        while True:
+            for v in rc.data_buf():
+                print(v.dt.isoformat(), v)
+            time.sleep(2)
+    except KeyboardInterrupt:
+        print('\nStopped.')
+    finally:
+        rc._connection.close()
 
 
 if __name__ == '__main__':
