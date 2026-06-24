@@ -38,6 +38,7 @@ class ConnectionClosed(Exception):
 # BluetoothBleak — async bleak wrapped in a sync facade (macOS/Win)
 # ──────────────────────────────────────────────────────────────────
 
+
 class BluetoothBleak:
     """Synchronous BLE transport backed by bleak (macOS, Windows, non-Linux).
 
@@ -168,9 +169,7 @@ class BluetoothBleak:
             try:
                 # §3.1: slice request into ≤18-byte writes
                 for pos in range(0, len(req), 18):
-                    await self._client.write_gatt_char(
-                        _WRITE_UUID, req[pos:pos + 18], response=False
-                    )
+                    await self._client.write_gatt_char(_WRITE_UUID, req[pos : pos + 18], response=False)
                 try:
                     payload = await asyncio.wait_for(self._resp_future, timeout=10.0)
                 except asyncio.TimeoutError as exc:
@@ -231,9 +230,7 @@ if _have_bluepy:
             try:
                 self.p = Peripheral(mac)
             except BTLEDisconnectError as exc:
-                raise DeviceNotFound(
-                    'Device not found or Bluetooth adapter is not powered on'
-                ) from exc
+                raise DeviceNotFound('Device not found or Bluetooth adapter is not powered on') from exc
 
             self.p.withDelegate(self)
 
@@ -259,7 +256,7 @@ if _have_bluepy:
                 raise ConnectionClosed('Connection is closing')
 
             for pos in range(0, len(req), 18):
-                self.p.writeCharacteristic(self.write_fd, req[pos: min(pos + 18, len(req))])
+                self.p.writeCharacteristic(self.write_fd, req[pos : min(pos + 18, len(req))])
 
             timeout_end = time.time() + 10.0
             while self._response is None and not self._closing:
@@ -289,6 +286,7 @@ if _have_bluepy:
                 self.p = None
 
 else:
+
     class BluepyBluetooth:  # type: ignore[no-redef]
         """Stub: bluepy is not installed; BLE via bluepy requires Linux + bluepy."""
 

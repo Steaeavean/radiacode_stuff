@@ -48,16 +48,21 @@ async def send_data(d):
 def main():
     parser = argparse.ArgumentParser(description='Send RadiaCode measurements to narodmon.ru')
     parser.add_argument(
-        '--bluetooth-mac', type=str, required=False,
-        help='Bluetooth MAC address — Linux only (via bluepy). '
-             'Also used as the device identifier sent to narodmon.',
+        '--bluetooth-mac',
+        type=str,
+        required=False,
+        help='Bluetooth MAC address — Linux only (via bluepy). Also used as the device identifier sent to narodmon.',
     )
     parser.add_argument(
-        '--bluetooth-address', type=str, required=False,
+        '--bluetooth-address',
+        type=str,
+        required=False,
         help='Bluetooth device address / CoreBluetooth UUID (macOS/Windows via bleak)',
     )
     parser.add_argument(
-        '--bluetooth-name', type=str, required=False,
+        '--bluetooth-name',
+        type=str,
+        required=False,
         help='Scan for BLE device with this name prefix (e.g. "RadiaCode")',
     )
     parser.add_argument('--connection', choices=['usb', 'bluetooth'], default='bluetooth', help='device connection type')

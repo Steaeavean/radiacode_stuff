@@ -9,15 +9,21 @@ from radiacode import RealTimeData, RadiaCode
 def main():
     parser = argparse.ArgumentParser(description='RadiaCode Prometheus exporter')
     parser.add_argument(
-        '--bluetooth-mac', type=str, required=False,
+        '--bluetooth-mac',
+        type=str,
+        required=False,
         help='Bluetooth MAC address — Linux only (via bluepy)',
     )
     parser.add_argument(
-        '--bluetooth-address', type=str, required=False,
+        '--bluetooth-address',
+        type=str,
+        required=False,
         help='Bluetooth device address / CoreBluetooth UUID (macOS/Windows via bleak)',
     )
     parser.add_argument(
-        '--bluetooth-name', type=str, required=False,
+        '--bluetooth-name',
+        type=str,
+        required=False,
         help='Scan for BLE device with this name prefix (e.g. "RadiaCode")',
     )
     parser.add_argument('--update-interval', type=int, default=3, required=False, help='update interval (seconds)')

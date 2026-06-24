@@ -28,8 +28,7 @@ Connection options (choose one):
         type=str,
         required=False,
         metavar='MAC',
-        help='Bluetooth MAC address — Linux only (via bluepy). '
-             'On macOS/Windows use --bluetooth-address or --bluetooth-name.',
+        help='Bluetooth MAC address — Linux only (via bluepy). On macOS/Windows use --bluetooth-address or --bluetooth-name.',
     )
     parser.add_argument(
         '--bluetooth-address',
@@ -37,7 +36,7 @@ Connection options (choose one):
         required=False,
         metavar='ADDRESS',
         help='Bluetooth device address / CoreBluetooth UUID for bleak '
-             '(macOS, Windows, Linux-bleak). Takes precedence over --bluetooth-name.',
+        '(macOS, Windows, Linux-bleak). Takes precedence over --bluetooth-name.',
     )
     parser.add_argument(
         '--bluetooth-name',
@@ -45,8 +44,7 @@ Connection options (choose one):
         required=False,
         metavar='PREFIX',
         default=None,
-        help='Scan for a BLE device whose name starts with PREFIX '
-             '(default auto-scan if no address given). E.g. "RadiaCode".',
+        help='Scan for a BLE device whose name starts with PREFIX (default auto-scan if no address given). E.g. "RadiaCode".',
     )
     parser.add_argument(
         '--serial',
@@ -64,6 +62,7 @@ Connection options (choose one):
 
     if ble_addr or ble_name or ble_mac:
         import platform
+
         if platform.system() == 'Linux' and ble_mac and not ble_addr and not ble_name:
             print(f'Connecting via Bluetooth (bluepy) to MAC {ble_mac}')
         else:

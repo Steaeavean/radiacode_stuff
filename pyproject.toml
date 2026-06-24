@@ -48,6 +48,9 @@ exclude-newer = "1 week"
 [tool.ruff]
 line-length = 130
 target-version = "py310"
+# phase0/ contains research/validation scripts not subject to library lint rules.
+# timesync.py is a standalone utility without strict style requirements.
+exclude = ["phase0", "timesync.py"]
 
 [tool.ruff.lint]
 extend-select = ["B", "Q"]

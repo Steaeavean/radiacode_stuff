@@ -143,15 +143,22 @@ def plot_RC102Spectrum():
         + 'and optionally save data to file in yaml format.'
     )
     parser.add_argument(
-        '-b', '--bluetooth-mac', type=str, required=False,
+        '-b',
+        '--bluetooth-mac',
+        type=str,
+        required=False,
         help='Bluetooth MAC address — Linux only (via bluepy)',
     )
     parser.add_argument(
-        '--bluetooth-address', type=str, required=False,
+        '--bluetooth-address',
+        type=str,
+        required=False,
         help='Bluetooth device address / CoreBluetooth UUID (macOS/Windows via bleak)',
     )
     parser.add_argument(
-        '--bluetooth-name', type=str, required=False,
+        '--bluetooth-name',
+        type=str,
+        required=False,
         help='Scan for BLE device with this name prefix, e.g. "RadiaCode" (macOS/Windows via bleak)',
     )
     parser.add_argument('-s', '--serial-number', type=str, required=False, help='serial number of device')
