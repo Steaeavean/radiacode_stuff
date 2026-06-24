@@ -2,16 +2,17 @@ name: build
 
 on:
   push:
-    branches: [master]
-    tags: ['*.*.*']
+    branches: [main]
+    tags: ['[0-9]*.[0-9]*.[0-9]*']
   pull_request:
-    branches: [master]
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # ── Lint ──────────────────────────────────────────────────────────────────
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -25,21 +26,24 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Ruff
+      - name: Ruff check + format
         run: |
           uv run ruff check
           uv run ruff format --check
 
+  # ── Test matrix (macOS + Linux, Python 3.10 & 3.13) ─────────────────────
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.9', '3.13']
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.10', '3.13']
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install system dependencies
+      - name: Install system dependencies (Linux only)
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libglib2.0-dev
@@ -52,14 +56,25 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      # TODO: Enable when tests are added
-      # - name: Run tests
-      #   run: uv run pytest -ra -v
+      - name: Import smoke test
+        run: |
+          uv run python - <<'EOF'
+          from radiacode import RadiaCode, RealTimeData, RawData, Spectrum
+          from radiacode.transports.bluetooth import BluetoothBleak, BluepyBluetooth, DeviceNotFound
+          import platform
+          print(f"platform: {platform.system()}")
+          print(f"BluetoothBleak: {BluetoothBleak}")
+          print(f"BluepyBluetooth: {BluepyBluetooth}")
+          print("import OK")
+          EOF
 
+  # ── Release (tag push only) ───────────────────────────────────────────────
   release:
     if: startsWith(github.ref, 'refs/tags/')
     needs: [lint, test]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -73,24 +88,33 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
 
-      - name: Build wheel
+      - name: Build wheel + sdist
         run: uv build
 
-      - name: Release Notes
+      - name: Generate release notes from git log
         run: |
-          echo '## Changes since previous release:' > changelog.md
-          git log --oneline $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- [%h](https://github.com/cdump/radiacode/commit/%H) %s" >> changelog.md
+          PREV=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          {
+            echo "## Changes in ${{ github.ref_name }}"
+            echo ""
+            if [ -n "$PREV" ]; then
+              git log --oneline "${PREV}..HEAD" \
+                --pretty=format:"- [%h](https://github.com/Steaeavean/radiacode_stuff/commit/%H) %s"
+            else
+              # Initial release — show all commits except the upstream import baseline
+              git log --oneline \
+                --pretty=format:"- [%h](https://github.com/Steaeavean/radiacode_stuff/commit/%H) %s" \
+                | grep -v "import upstream cdump/radiacode" \
+                | grep -v "Initial commit"
+            fi
+          } > changelog.md
+          cat changelog.md
 
-      - name: Github Release
+      - name: GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
           draft: false
           prerelease: false
           body_path: changelog.md
           files: dist/*
-
-      - name: Publish to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
-        run: uv publish
