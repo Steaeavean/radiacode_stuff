@@ -4,6 +4,8 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+[Русская версия / Russian README](README.ru.md)
+
 Python library for interfacing with the [RadiaCode-10x](https://www.radiacode.com/) radiation detectors and spectrometers. Control your device, collect measurements, and analyze radiation data with ease.
 
 ## Features
@@ -182,6 +184,29 @@ asyncio.run(scan())
 | `--bluetooth-mac AA:BB:CC...` | `--bluetooth-name RadiaCode` |
 
 The public `RadiaCode` API (all methods beyond the constructor) is identical regardless of transport.
+
+## Utilities
+
+### `timesync.py` — Sync device clock to system time
+
+The library automatically calls `set_local_time(now)` on every connect, but
+`timesync.py` makes the sync explicit and confirms it with a drift report.
+
+**When to use:** if the device display shows UTC instead of local time (typical
+after the official RadiaCode Android app last connected — it sets UTC).
+
+```bash
+# Auto-scan (any nearby RadiaCode):
+uv run python timesync.py
+
+# Fastest — connect by known CoreBluetooth UUID:
+uv run python timesync.py --bluetooth-address XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+
+# Report drift only, do not sync:
+uv run python timesync.py --dry-run
+```
+
+See [docs/TIMESYNC.md](docs/TIMESYNC.md) for cron setup and technical details.
 
 ## Phase 0 Validation Scripts
 
