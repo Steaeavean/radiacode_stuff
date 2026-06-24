@@ -1,0 +1,14 @@
+[project]
+name = "rc-phase0-soak"
+version = "0"
+description = "RadiaCode BLE validation scripts (Phase 0, macOS/bleak)"
+requires-python = ">=3.10"
+dependencies = [
+    "bleak>=0.22",
+    "radiacode",
+]
+
+# Use the in-repo radiacode package (editable) so the phase0 scripts always
+# run against the current bleak-enabled build rather than a PyPI snapshot.
+[tool.uv.sources]
+radiacode = { path = "..", editable = true }

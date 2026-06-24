@@ -2,5 +2,13 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .mypy_cache/
+.ruff_cache/
 dist/
+.venv/
 .aider*
+
+# phase0 validation artifacts
+phase0/.venv/
+phase0/uv.lock
+phase0/soak_logs/*.jsonl.gz
+phase0/__pycache__/
