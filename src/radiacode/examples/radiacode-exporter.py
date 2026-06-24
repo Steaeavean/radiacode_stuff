@@ -7,15 +7,30 @@ from radiacode import RealTimeData, RadiaCode
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--bluetooth-mac', type=str, required=False, help='bluetooth MAC address of radiascan device')
+    parser = argparse.ArgumentParser(description='RadiaCode Prometheus exporter')
+    parser.add_argument(
+        '--bluetooth-mac', type=str, required=False,
+        help='Bluetooth MAC address — Linux only (via bluepy)',
+    )
+    parser.add_argument(
+        '--bluetooth-address', type=str, required=False,
+        help='Bluetooth device address / CoreBluetooth UUID (macOS/Windows via bleak)',
+    )
+    parser.add_argument(
+        '--bluetooth-name', type=str, required=False,
+        help='Scan for BLE device with this name prefix (e.g. "RadiaCode")',
+    )
     parser.add_argument('--update-interval', type=int, default=3, required=False, help='update interval (seconds)')
     parser.add_argument('--port', type=int, default=5432, required=False, help='prometheus http port')
     args = parser.parse_args()
 
-    if args.bluetooth_mac:
+    if args.bluetooth_mac or args.bluetooth_address or args.bluetooth_name:
         print('will use Bluetooth connection')
-        rc = RadiaCode(bluetooth_mac=args.bluetooth_mac)
+        rc = RadiaCode(
+            bluetooth_mac=args.bluetooth_mac,
+            bluetooth_address=args.bluetooth_address,
+            bluetooth_name=args.bluetooth_name,
+        )
     else:
         print('will use USB connection')
         rc = RadiaCode()

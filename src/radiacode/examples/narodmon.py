@@ -46,8 +46,20 @@ async def send_data(d):
 
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--bluetooth-mac', type=str, required=True, help='MAC address of radiascan device')
+    parser = argparse.ArgumentParser(description='Send RadiaCode measurements to narodmon.ru')
+    parser.add_argument(
+        '--bluetooth-mac', type=str, required=False,
+        help='Bluetooth MAC address — Linux only (via bluepy). '
+             'Also used as the device identifier sent to narodmon.',
+    )
+    parser.add_argument(
+        '--bluetooth-address', type=str, required=False,
+        help='Bluetooth device address / CoreBluetooth UUID (macOS/Windows via bleak)',
+    )
+    parser.add_argument(
+        '--bluetooth-name', type=str, required=False,
+        help='Scan for BLE device with this name prefix (e.g. "RadiaCode")',
+    )
     parser.add_argument('--connection', choices=['usb', 'bluetooth'], default='bluetooth', help='device connection type')
     parser.add_argument('--interval', type=int, required=False, default=600, help='send interval, seconds')
     args = parser.parse_args()
@@ -56,11 +68,19 @@ def main():
         print('will use USB connection')
         rc_conn = RadiaCode()
     else:
+        if not (args.bluetooth_mac or args.bluetooth_address or args.bluetooth_name):
+            parser.error('Bluetooth connection requires --bluetooth-mac, --bluetooth-address, or --bluetooth-name')
         print('will use Bluetooth connection')
-        rc_conn = RadiaCode(bluetooth_mac=args.bluetooth_mac)
+        rc_conn = RadiaCode(
+            bluetooth_mac=args.bluetooth_mac,
+            bluetooth_address=args.bluetooth_address,
+            bluetooth_name=args.bluetooth_name,
+        )
 
+    # Use MAC as device identifier for narodmon when available, else fallback
+    mac_id = args.bluetooth_mac or args.bluetooth_address or 'RC-BLE'
     device_data = {
-        'mac': args.bluetooth_mac.replace(':', '-'),
+        'mac': mac_id.replace(':', '-'),
         'name': 'RadiaCode-101',
     }
 

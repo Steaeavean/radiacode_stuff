@@ -79,17 +79,32 @@ async def on_startup(app):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--bluetooth-mac', type=str, required=False, help='bluetooth MAC address of radiascan device')
+    parser = argparse.ArgumentParser(description='RadiaCode real-time webserver')
+    parser.add_argument(
+        '--bluetooth-mac', type=str, required=False,
+        help='Bluetooth MAC address — Linux only (via bluepy)',
+    )
+    parser.add_argument(
+        '--bluetooth-address', type=str, required=False,
+        help='Bluetooth device address / CoreBluetooth UUID (macOS/Windows via bleak)',
+    )
+    parser.add_argument(
+        '--bluetooth-name', type=str, required=False,
+        help='Scan for BLE device with this name prefix (e.g. "RadiaCode")',
+    )
     parser.add_argument('--listen-host', type=str, required=False, default='0.0.0.0', help='listen host for webserver')
     parser.add_argument('--listen-port', type=int, required=False, default=8080, help='listen port for webserver')
     args = parser.parse_args()
 
     app = web.Application()
     app.ws_clients = []
-    if args.bluetooth_mac:
+    if args.bluetooth_mac or args.bluetooth_address or args.bluetooth_name:
         print('will use Bluetooth connection')
-        app.rc_conn = RadiaCode(bluetooth_mac=args.bluetooth_mac)
+        app.rc_conn = RadiaCode(
+            bluetooth_mac=args.bluetooth_mac,
+            bluetooth_address=args.bluetooth_address,
+            bluetooth_name=args.bluetooth_name,
+        )
     else:
         print('will use USB connection')
         app.rc_conn = RadiaCode()

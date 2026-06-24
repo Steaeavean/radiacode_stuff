@@ -1,38 +1,80 @@
 import argparse
 import time
-import platform
 
 from radiacode import RadiaCode
-from radiacode.transports.usb import DeviceNotFound as DeviceNotFoundUSB
 from radiacode.transports.bluetooth import DeviceNotFound as DeviceNotFoundBT
+from radiacode.transports.usb import DeviceNotFound as DeviceNotFoundUSB
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description='Read real-time data from a RadiaCode device.',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Connection options (choose one):
+  USB (all platforms, requires sudo on Linux):
+    python -m radiacode.examples.basic
 
-    # Bluetooth is only supported on Linux via bluepy
-    if platform.system() == 'Linux':
-        parser.add_argument(
-            '--bluetooth-mac',
-            type=str,
-            required=False,
-            help='(Linux only) Bluetooth MAC address of radiascan device (e.g. 00:11:22:33:44:55)',
-        )
+  Bluetooth — macOS / Windows (via bleak, no sudo required):
+    python -m radiacode.examples.basic --bluetooth-name RadiaCode
+    python -m radiacode.examples.basic --bluetooth-address <CoreBluetooth-UUID>
 
+  Bluetooth — Linux (via bluepy, requires sudo):
+    python -m radiacode.examples.basic --bluetooth-mac AA:BB:CC:DD:EE:FF
+""",
+    )
+    parser.add_argument(
+        '--bluetooth-mac',
+        type=str,
+        required=False,
+        metavar='MAC',
+        help='Bluetooth MAC address — Linux only (via bluepy). '
+             'On macOS/Windows use --bluetooth-address or --bluetooth-name.',
+    )
+    parser.add_argument(
+        '--bluetooth-address',
+        type=str,
+        required=False,
+        metavar='ADDRESS',
+        help='Bluetooth device address / CoreBluetooth UUID for bleak '
+             '(macOS, Windows, Linux-bleak). Takes precedence over --bluetooth-name.',
+    )
+    parser.add_argument(
+        '--bluetooth-name',
+        type=str,
+        required=False,
+        metavar='PREFIX',
+        default=None,
+        help='Scan for a BLE device whose name starts with PREFIX '
+             '(default auto-scan if no address given). E.g. "RadiaCode".',
+    )
     parser.add_argument(
         '--serial',
         type=str,
         required=False,
-        help='serial number of radiascan device (e.g. "RC-10x-xxxxxx"). Useful in case of multiple devices.',
+        metavar='SN',
+        help='USB serial number (e.g. "RC-10x-xxxxxx") — useful with multiple USB devices.',
     )
 
     args = parser.parse_args()
 
-    if hasattr(args, 'bluetooth_mac') and args.bluetooth_mac:
-        print(f'Connecting to Radiacode via Bluetooth (MAC address: {args.bluetooth_mac})')
+    ble_mac = args.bluetooth_mac
+    ble_addr = args.bluetooth_address
+    ble_name = args.bluetooth_name
 
+    if ble_addr or ble_name or ble_mac:
+        import platform
+        if platform.system() == 'Linux' and ble_mac and not ble_addr and not ble_name:
+            print(f'Connecting via Bluetooth (bluepy) to MAC {ble_mac}')
+        else:
+            label = ble_addr or f'name prefix "{ble_name}"' if ble_name else 'auto-scan'
+            print(f'Connecting via Bluetooth (bleak) — {label}')
         try:
-            rc = RadiaCode(bluetooth_mac=args.bluetooth_mac)
+            rc = RadiaCode(
+                bluetooth_mac=ble_mac,
+                bluetooth_address=ble_addr,
+                bluetooth_name=ble_name,
+            )
         except DeviceNotFoundBT as e:
             print(e)
             return
@@ -40,27 +82,17 @@ def main():
             print(e)
             return
     else:
-        print('Connecting to Radiacode via USB' + (f' (serial number: {args.serial})' if args.serial else ''))
-
+        print('Connecting via USB' + (f' (serial: {args.serial})' if args.serial else ''))
         try:
             rc = RadiaCode(serial_number=args.serial)
         except DeviceNotFoundUSB:
-            print('Device not found, check your USB connection')
+            print('Device not found — check USB connection')
             return
 
-    serial = rc.serial_number()
-    print(f'### Serial number: {serial}')
-    print('--------')
-
-    fw_version = rc.fw_version()
-    print(f'### Firmware: {fw_version}')
-    print('--------')
-
-    spectrum = rc.spectrum()
-    print(f'### Spectrum: {spectrum}')
-    print('--------')
-
-    print('### DataBuf:')
+    print(f'Serial:   {rc.serial_number()}')
+    print(f'Firmware: {rc.fw_version()}')
+    print(f'Spectrum: {rc.spectrum()}')
+    print('--- DataBuf (Ctrl-C to stop) ---')
     while True:
         for v in rc.data_buf():
             print(v.dt.isoformat(), v)

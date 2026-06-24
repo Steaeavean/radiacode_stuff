@@ -15,8 +15,9 @@ Calculates and shows in an animated display:
 
 Command line options:
 
-  Usage: show-spectrum.py [-h] [-b BLUETOOTH_MAC] [-r] [-R] [-q]
-          [-i INTERVAL] [-f FILE] [-t TIME] [-H HISTORY]
+  Usage: show-spectrum.py [-h] [-b BLUETOOTH_MAC]
+          [--bluetooth-address ADDRESS] [--bluetooth-name PREFIX]
+          [-r] [-R] [-q] [-i INTERVAL] [-f FILE] [-t TIME] [-H HISTORY]
 
   Read and display gamma energy spectrum from RadioCode 10x or 110,
   show differential and updated cumulative spectrum, optionally
@@ -24,7 +25,12 @@ Command line options:
 
   Options:
     -h, --help          show this help message and exit
-    -b BLUETOOTH_MAC, --bluetooth-mac BLUETOOTH_MAC  Bluetooth MAC address of device
+    -b BLUETOOTH_MAC, --bluetooth-mac BLUETOOTH_MAC
+                        Bluetooth MAC address — Linux only (via bluepy)
+    --bluetooth-address ADDRESS
+                        CoreBluetooth UUID / bleak address (macOS/Windows)
+    --bluetooth-name PREFIX
+                        BLE name prefix scan (macOS/Windows, e.g. "RadiaCode")
     -s SERIAL_NUMBER, --serial-number SERIAL_NUMBER  serial number of device
     -r, --restart       restart spectrum accumulation
     -R, --Reset         reset spectrum stored in device
@@ -136,7 +142,18 @@ def plot_RC102Spectrum():
         + 'show differential and updated cumulative spectrum, '
         + 'and optionally save data to file in yaml format.'
     )
-    parser.add_argument('-b', '--bluetooth-mac', type=str, required=False, help='bluetooth MAC address of device')
+    parser.add_argument(
+        '-b', '--bluetooth-mac', type=str, required=False,
+        help='Bluetooth MAC address — Linux only (via bluepy)',
+    )
+    parser.add_argument(
+        '--bluetooth-address', type=str, required=False,
+        help='Bluetooth device address / CoreBluetooth UUID (macOS/Windows via bleak)',
+    )
+    parser.add_argument(
+        '--bluetooth-name', type=str, required=False,
+        help='Scan for BLE device with this name prefix, e.g. "RadiaCode" (macOS/Windows via bleak)',
+    )
     parser.add_argument('-s', '--serial-number', type=str, required=False, help='serial number of device')
     parser.add_argument('-r', '--restart', action='store_true', help='restart spectrum accumulation')
     parser.add_argument('-R', '--Reset', action='store_true', help='reset spectrum stored in device')
@@ -148,6 +165,8 @@ def plot_RC102Spectrum():
     args = parser.parse_args()
 
     bluetooth_mac = args.bluetooth_mac
+    bluetooth_address = args.bluetooth_address
+    bluetooth_name = args.bluetooth_name
     serial_number = args.serial_number
     restart_accumulation = args.restart
     reset_device_spectrum = args.Reset
@@ -162,8 +181,12 @@ def plot_RC102Spectrum():
 
     if not quiet:
         print(f'\n *==* script {sys.argv[0]} executing')
-        if bluetooth_mac is not None:
-            print(f'    connecting via Bluetooth, MAC {bluetooth_mac}')
+        if bluetooth_address:
+            print(f'    connecting via Bluetooth (bleak), address {bluetooth_address}')
+        elif bluetooth_name:
+            print(f'    connecting via Bluetooth (bleak), name prefix "{bluetooth_name}"')
+        elif bluetooth_mac is not None:
+            print(f'    connecting via Bluetooth (bluepy), MAC {bluetooth_mac}')
         elif serial_number is not None:
             print(f'    connect via USB to device with SN {serial_number}')
         else:
@@ -172,7 +195,12 @@ def plot_RC102Spectrum():
     # ------
     # initialize and connect to RC10x device
     # ------
-    rc = RadiaCode(bluetooth_mac=bluetooth_mac, serial_number=serial_number)
+    rc = RadiaCode(
+        bluetooth_mac=bluetooth_mac,
+        bluetooth_address=bluetooth_address,
+        bluetooth_name=bluetooth_name,
+        serial_number=serial_number,
+    )
     serial = rc.serial_number()
     device_type = serial.split('-')[1]
     dev_const = device_constants(device_type)
