@@ -13,7 +13,7 @@ from typing import Optional
 from radiacode.bytes_buffer import BytesBuffer
 from radiacode.decoders.databuf import decode_VS_DATA_BUF
 from radiacode.decoders.spectrum import decode_RC_VS_SPECTRUM
-from radiacode.transports.bluetooth import Bluetooth
+from radiacode.transports.bluetooth import BluetoothBleak, BluepyBluetooth
 from radiacode.transports.usb import Usb
 from radiacode.types import (
     _VSFR_FORMATS,
@@ -48,44 +48,61 @@ def spectrum_channel_to_energy(channel_number: int, a0: float, a1: float, a2: fl
 
 
 class RadiaCode:
-    _connection: Bluetooth | Usb
+    _connection: BluepyBluetooth | BluetoothBleak | Usb
 
     def __init__(
         self,
         bluetooth_mac: Optional[str] = None,
+        bluetooth_address: Optional[str] = None,
+        bluetooth_name: Optional[str] = None,
         serial_number: Optional[str] = None,
         ignore_firmware_compatibility_check: bool = False,
     ):
         """Initialize a RadiaCode device connection.
 
-        This constructor establishes a connection to a RadiaCode device either via Bluetooth
-        or USB, initializes the device, and performs firmware compatibility checks.
+        Connects to a RadiaCode device via Bluetooth (BLE) or USB, performs
+        session initialisation, and checks firmware compatibility.
 
         Args:
-            bluetooth_mac: Optional MAC address for Bluetooth connection. If provided and
-                         Bluetooth is supported on the system, will connect via Bluetooth.
-            serial_number: Optional USB serial number to connect to a specific device when
-                         multiple devices are connected. Used only for USB connections.
-            ignore_firmware_compatibility_check: If True, skips the firmware version
-                                              compatibility check. Default is False.
+            bluetooth_mac: Bluetooth MAC address — Linux only (via bluepy).
+                Ignored on macOS/Windows; use ``bluetooth_address`` or
+                ``bluetooth_name`` there instead.
+            bluetooth_address: CoreBluetooth / bleak device address (UUID on
+                macOS, MAC on Windows/Linux with bleak). Used when an explicit
+                address is known. Takes precedence over ``bluetooth_name``.
+            bluetooth_name: Name prefix for auto-scan (e.g. ``"RadiaCode"``).
+                The first discovered device whose name starts with this prefix
+                *or* that advertises the RadiaCode service UUID is used.
+                If neither ``bluetooth_address`` nor ``bluetooth_name`` is given,
+                the first RadiaCode device found in a BLE scan is used.
+            serial_number: USB serial number for selecting a specific device
+                when multiple are connected. USB path only.
+            ignore_firmware_compatibility_check: Skip the fw-version guard
+                (fw < 4.8). Use only for debugging older firmware.
 
-        Raises:
-            Exception: If the device firmware version is incompatible (< 4.8) and
-                      ignore_firmware_compatibility_check is False.
-
-        Note:
-            - Bluetooth connectivity is not supported on macOS systems
-            - If both bluetooth_mac and serial_number are None, connects to the first
-              available USB device
-            - The device is initialized with the current system time
+        Platform notes:
+            - **macOS**: use ``bluetooth_address`` (CoreBluetooth UUID) or
+              ``bluetooth_name``/auto-scan via bleak. MAC addresses are not
+              exposed by CoreBluetooth and cannot be used.
+            - **Linux**: ``bluetooth_mac`` connects via bluepy (classic path).
+              ``bluetooth_address`` / ``bluetooth_name`` use bleak instead.
+            - **Windows**: use ``bluetooth_address`` or ``bluetooth_name``/
+              auto-scan via bleak.
         """
         self._seq = 0
 
-        # Bluepy doesn't support MacOS: https://github.com/IanHarvey/bluepy/issues/44
-        self._bt_supported = platform.system() != 'Darwin'
+        _is_linux = platform.system() == 'Linux'
 
-        if bluetooth_mac is not None and self._bt_supported is True:
-            self._connection = Bluetooth(bluetooth_mac)
+        if _is_linux and bluetooth_mac is not None:
+            # Classic Linux path: bluepy sync poll
+            self._connection: BluepyBluetooth | BluetoothBleak | Usb = BluepyBluetooth(bluetooth_mac)
+        elif bluetooth_address is not None or bluetooth_name is not None:
+            # bleak path: explicit address or name-based scan (macOS / Windows / Linux-bleak)
+            self._connection = BluetoothBleak(address=bluetooth_address, name=bluetooth_name)
+        elif not _is_linux and bluetooth_mac is not None:
+            # bluetooth_mac provided on a non-Linux platform: treat as name-based scan
+            # (MAC addresses don't work on macOS; best effort — auto-scan for any RadiaCode)
+            self._connection = BluetoothBleak(name='RadiaCode')
         else:
             self._connection = Usb(serial_number=serial_number)
 
