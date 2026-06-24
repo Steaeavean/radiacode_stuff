@@ -1,50 +1,55 @@
 # RadiaCode Python Library
 
 [![PyPI version](https://img.shields.io/pypi/v/radiacode)](https://pypi.org/project/radiacode)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Python library for interfacing with the [RadiaCode-10x](https://www.radiacode.com/) radiation detectors and spectrometers. Control your device, collect measurements, and analyze radiation data with ease.
 
-## 🚀 Features
+## Features
 
-- 📊 Real-time radiation measurements
-- 📈 Spectrum acquisition and analysis
-- 🔌 USB and Bluetooth connectivity
-- 🌐 Web interface example included
-- 📱 Device configuration management
+- Real-time radiation measurements
+- Spectrum acquisition and analysis
+- USB and Bluetooth connectivity (macOS, Linux, Windows)
+- Web interface example included
+- Device configuration management
 
-## 📸 Demo
+## Demo
 
 Interactive web interface example ([backend](src/radiacode/examples/webserver.py) | [frontend](src/radiacode/examples/webserver.html)):
 
 ![radiacode-webserver-example](./screenshot.png)
 
-## 🎮 Quick Start
+## Quick Start
 
-### Examples
+### Install
+
 ```bash
+pip install --upgrade radiacode
+# or, with example dependencies:
 pip install --upgrade 'radiacode[examples]'
 ```
 
-Run the web interface shown in the screenshot above:
-```bash
-# Via Bluetooth (Linux only, replace with your device's address)
-$ python3 -m radiacode.examples.webserver --bluetooth-mac 52:43:01:02:03:04
+### Examples
 
-# Via USB connection (Linux/MacOS/Windows)
-$ sudo python3 -m radiacode.examples.webserver
+```bash
+# USB connection (all platforms)
+python3 -m radiacode.examples.basic
+
+# Bluetooth — macOS / Windows (via bleak, no sudo)
+python3 -m radiacode.examples.basic --bluetooth-name RadiaCode
+
+# Bluetooth — Linux (via bluepy, replace MAC)
+python3 -m radiacode.examples.basic --bluetooth-mac 52:43:01:02:03:04
+
+# Web interface (USB)
+python3 -m radiacode.examples.webserver
+# Web interface (Bluetooth, macOS)
+python3 -m radiacode.examples.webserver --bluetooth-name RadiaCode
 ```
 
-Basic terminal output example (same options as web interface):
-```bash
-$ python3 -m radiacode.examples.basic
-```
+### Library Usage
 
-### Library Usage Example
-```bash
-pip install --upgrade radiacode
-```
 ```python
 from radiacode import RadiaCode, RealTimeData
 
@@ -64,17 +69,28 @@ print(f"Total counts: {sum(spectrum.counts)}")
 
 # Configure device
 device.set_display_brightness(5)  # 0-9 brightness level
-device.set_language('en')        # 'en' or 'ru'
+device.set_language('en')         # 'en' or 'ru'
+```
+
+#### Bluetooth Connection
+
+```python
+# macOS / Windows — auto-scan for any RadiaCode device
+device = RadiaCode(bluetooth_name='RadiaCode')
+
+# macOS — connect by CoreBluetooth UUID (discovered once via bleak/scan)
+device = RadiaCode(bluetooth_address='XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX')
+
+# Linux — connect by MAC address (via bluepy)
+device = RadiaCode(bluetooth_mac='52:43:01:02:03:04')
+
+# USB — connect to specific device by serial number
+device = RadiaCode(serial_number='RC-101-xxxxxx')
 ```
 
 #### More Features
+
 ```python
-# Bluetooth connection (Linux only)
-device = RadiaCode(bluetooth_mac="52:43:01:02:03:04")
-
-# Connect to specific USB device
-device = RadiaCode(serial_number="YOUR_SERIAL_NUMBER")
-
 # Energy calibration
 coefficients = device.energy_calib()
 print(f"Calibration coefficients: {coefficients}")
@@ -83,47 +99,116 @@ print(f"Calibration coefficients: {coefficients}")
 device.dose_reset()
 device.spectrum_reset()
 
-# Configure device behavior
+# Configure device behaviour
 device.set_sound_on(True)
 device.set_vibro_on(True)
 device.set_display_off_time(30)  # Auto-off after 30 seconds
 ```
 
-## 🔧 Development Setup
+## Development Setup
+
 1. Install prerequisites:
+
    ```bash
-   # Install uv
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
-2. Clone
+2. Clone this repository:
+
    ```bash
-   git clone https://github.com/cdump/radiacode.git
-   cd radiacode
+   git clone https://github.com/Steaeavean/radiacode_stuff.git
+   cd radiacode_stuff
    ```
 
 3. Run examples:
+
    ```bash
-   uv run python radiacode.examples/basic.py
+   uv run python -m radiacode.examples.basic
    ```
 
-## ⚠️ Platform-Specific Notes
+## Platform-Specific Notes
 
-### MacOS
-- ✅ USB connectivity works out of the box
-- ❌ Bluetooth is not supported (bluepy limitation)
-- 📝 Required: `brew install libusb`
+### macOS
+
+- USB connectivity works out of the box.
+- Bluetooth (BLE) is **fully supported** via [bleak](https://github.com/hbldh/bleak) (CoreBluetooth). No sudo required.
+- Required: `brew install libusb`
+
+**Connecting via BLE on macOS:**
+
+CoreBluetooth does not expose raw MAC addresses. Use one of:
+
+```bash
+# Auto-scan — finds any nearby RadiaCode device
+python3 -m radiacode.examples.basic --bluetooth-name RadiaCode
+
+# Specific device by CoreBluetooth UUID (stable across sessions once paired)
+python3 -m radiacode.examples.basic --bluetooth-address XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+```
+
+To discover the CoreBluetooth UUID of your device, run a quick scan:
+
+```python
+import asyncio
+from bleak import BleakScanner
+
+async def scan():
+    devices = await BleakScanner.discover(timeout=5)
+    for d in devices:
+        if 'RadiaCode' in (d.name or ''):
+            print(d.address, d.name)
+
+asyncio.run(scan())
+```
 
 ### Linux
-- ✅ Both USB and Bluetooth fully supported
-- 📝 Required: `libusb` and Bluetooth libraries
-- 🔑 May need [udev rules](radiacode.rules) for USB access without root
+
+- Both USB and Bluetooth are fully supported.
+- USB: may need [udev rules](radiacode.rules) for non-root access.
+- Bluetooth (BLE): uses [bluepy](https://github.com/IanHarvey/bluepy) (`bluetooth_mac=`).
+  Requires Bluetooth libraries (`sudo apt install libbluetooth-dev`) and usually root.
 
 ### Windows
-- ✅ USB connectivity supported
-- ❌ Bluetooth is not supported (bluepy limitation)
-- 📝 Required: USB drivers
+
+- USB connectivity supported.
+- Bluetooth (BLE) supported via [bleak](https://github.com/hbldh/bleak). Use `bluetooth_name` or `bluetooth_address`.
+- Required: USB drivers (WinUSB via Zadig, or the vendor driver).
+
+## Migration from `bluetooth_mac` (Linux/bluepy) to `bluetooth_name` (macOS/bleak)
+
+| Old (Linux, bluepy) | New (macOS/Windows, bleak) |
+|---|---|
+| `RadiaCode(bluetooth_mac='AA:BB:CC...')` | `RadiaCode(bluetooth_name='RadiaCode')` |
+| `--bluetooth-mac AA:BB:CC...` | `--bluetooth-name RadiaCode` |
+
+The public `RadiaCode` API (all methods beyond the constructor) is identical regardless of transport.
+
+## Phase 0 Validation Scripts
+
+The `phase0/` directory contains BLE validation scripts that were used to verify
+the wire protocol on macOS before the bleak transport was integrated into the library.
+They remain useful for low-level debugging, hypothesis testing, and soak runs:
+
+| Script | Purpose |
+|---|---|
+| `ble_transport.py` | Async bleak transport + command layer (reference implementation) |
+| `ble_soak.py` | Multi-hour BLE soak logger (reconnect / idle cycles) |
+| `analyze_soak.py` | Offline report generator for soak logs |
+| `busy_probe.py` | H5/H21: connectable flag & busy/free state |
+| `h16_search_probe.py` | H16/H17: RealTimeData / RareData cadence |
+| `dose_compare.py` | H18: dose accumulation comparison |
+| `spectrum_probe.py` | H20: spectrum via BLE |
+| `h14_buffer_depth.py` | H14: DATA_BUF depth (USB, requires sudo) |
+| `h15_reconnect.py` | H15: reconnect state preservation (USB) |
+
+Running phase0 scripts:
+
+```bash
+cd phase0
+uv sync          # installs bleak + in-repo radiacode
+caffeinate -is uv run python ble_soak.py --hours 1
+```
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
