@@ -67,7 +67,12 @@ Connection options (choose one):
         if platform.system() == 'Linux' and ble_mac and not ble_addr and not ble_name:
             print(f'Connecting via Bluetooth (bluepy) to MAC {ble_mac}')
         else:
-            label = ble_addr or f'name prefix "{ble_name}"' if ble_name else 'auto-scan'
+            if ble_addr:
+                label = f'address {ble_addr}'
+            elif ble_name:
+                label = f'name prefix "{ble_name}"'
+            else:
+                label = 'auto-scan'
             print(f'Connecting via Bluetooth (bleak) — {label}')
         try:
             rc = RadiaCode(
