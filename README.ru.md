@@ -1,4 +1,4 @@
-# Библиотека RadiaCode для Python
+# Библиотека RadiaCode для Python — с поддержкой BLE на macOS
 
 [![PyPI version](https://img.shields.io/pypi/v/radiacode)](https://pypi.org/project/radiacode)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -9,6 +9,33 @@
 Python-библиотека для управления дозиметрами-спектрометрами
 [RadiaCode-10x](https://www.radiacode.com/): считывание измерений в реальном
 времени, получение гамма-спектра, настройка устройства по USB или Bluetooth.
+
+**Это форк [cdump/radiacode](https://github.com/cdump/radiacode) с добавленной поддержкой Bluetooth для macOS и Windows.**
+
+## Зачем этот форк?
+
+Оригинальная библиотека использует [bluepy](https://github.com/IanHarvey/bluepy)
+для Bluetooth Low Energy (BLE). **bluepy работает только на Linux** — она
+обращается напрямую к BlueZ D-Bus API и не имеет бэкенда для macOS или Windows.
+На macOS оригинальная библиотека просто бросает
+`ConnectionClosed("Bluetooth is not supported on this platform")` и откатывается
+на USB.
+
+**Решение:** Darwin-заглушка заменена на
+[bleak](https://github.com/hbldh/bleak) — кроссплатформенную async BLE-библиотеку,
+которая использует **CoreBluetooth** на macOS, **WinRT** на Windows и
+**BlueZ** на Linux. Поскольку `bleak` асинхронная, а публичный API `RadiaCode`
+синхронный, реализация оборачивает `bleak` в выделенный daemon-поток с
+собственным `asyncio` event loop — для вызывающего кода ничего не меняется.
+
+Ещё одно ограничение macOS: **CoreBluetooth не раскрывает MAC-адреса**
+BLE-устройств. Поиск устройства поэтому работает через BLE-скан с фильтрацией
+по service UUID RadiaCode (`e63215e5-…`) или префиксу имени. Для повторных
+подключений доступен параметр `bluetooth_address` с CoreBluetooth UUID
+конкретного устройства.
+
+Bleak-транспорт был проверен 6-часовым soak-тестом на RC-101 прошивка 4.14
+до включения в библиотеку; скрипты валидации находятся в `phase0/`.
 
 ## Возможности
 
