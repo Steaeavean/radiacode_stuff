@@ -54,7 +54,13 @@ class Usb:
         data = data[4:]
 
         while len(data) < response_length:
-            r = self._device.read(0x81, response_length - len(data)).tobytes()
+            r = self._device.read(
+                0x81,
+                response_length - len(data),
+                timeout=self._timeout_ms,
+            ).tobytes()
+            if len(r) == 0:
+                break
             data += r
 
         return BytesBuffer(data)

@@ -20,13 +20,14 @@ Usage (from repo root):
   # Estimate drift only, do not sync:
   uv run python timesync.py --dry-run
 """
+
 import argparse
 import datetime
 import sys
 import time
 
 from radiacode import RadiaCode
-from radiacode.transports.bluetooth import ConnectionClosed, DeviceNotFound
+from radiacode.transports.bluetooth import DeviceNotFound
 from radiacode.types import RealTimeData
 
 
@@ -47,19 +48,27 @@ def main() -> None:
         description='Sync RadiaCode device RTC to system local time.',
     )
     parser.add_argument(
-        '--bluetooth-address', metavar='UUID', default=None,
+        '--bluetooth-address',
+        metavar='UUID',
+        default=None,
         help='CoreBluetooth UUID or BLE address (avoids scan)',
     )
     parser.add_argument(
-        '--bluetooth-name', metavar='PREFIX', default=None,
+        '--bluetooth-name',
+        metavar='PREFIX',
+        default=None,
         help='BLE name prefix for auto-scan, e.g. "RadiaCode"',
     )
     parser.add_argument(
-        '--threshold', type=float, default=5.0, metavar='S',
+        '--threshold',
+        type=float,
+        default=5.0,
+        metavar='S',
         help='Sync only when |drift| > S seconds (default: 5); use 0 to always sync',
     )
     parser.add_argument(
-        '--dry-run', action='store_true',
+        '--dry-run',
+        action='store_true',
         help='Connect and report drift only; do not write SET_TIME to device',
     )
     args = parser.parse_args()
@@ -116,8 +125,8 @@ def main() -> None:
         print(f'\nIn sync — skipped (|drift| ≤ {args.threshold}s).')
 
     try:
-        rc._connection.close()
-    except (ConnectionClosed, Exception):
+        rc.close()
+    except Exception:
         pass
 
 

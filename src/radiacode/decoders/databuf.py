@@ -70,6 +70,7 @@ def decode_VS_DATA_BUF(
             except ValueError as e:
                 if ignore_errors:
                     print(f'BytesBuffer error while decoding {eid=}/{gid=} [{br.data().hex(" ")}]')
+                    break
                 else:
                     raise e
             # TODO

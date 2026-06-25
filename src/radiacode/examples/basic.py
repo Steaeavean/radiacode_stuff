@@ -105,7 +105,7 @@ Connection options (choose one):
     except KeyboardInterrupt:
         print('\nStopped.')
     finally:
-        rc._connection.close()
+        rc.close()
 
 
 if __name__ == '__main__':

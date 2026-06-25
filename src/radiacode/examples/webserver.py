@@ -71,7 +71,12 @@ async def process(app):
             },
         )
         print(f'Rates updated, sending to {len(app.ws_clients)} connected clients')
-        await asyncio.gather(*[ws.send_str(jdata) for ws in app.ws_clients], asyncio.sleep(1.0))
+        results = await asyncio.gather(
+            *[ws.send_str(jdata) for ws in app.ws_clients],
+            asyncio.sleep(1.0),
+            return_exceptions=True,
+        )
+        app.ws_clients = [ws for ws, r in zip(app.ws_clients, results, strict=False) if not isinstance(r, Exception)]
 
 
 async def on_startup(app):
@@ -98,7 +103,7 @@ if __name__ == '__main__':
         required=False,
         help='Scan for BLE device with this name prefix (e.g. "RadiaCode")',
     )
-    parser.add_argument('--listen-host', type=str, required=False, default='0.0.0.0', help='listen host for webserver')
+    parser.add_argument('--listen-host', type=str, required=False, default='127.0.0.1', help='listen host for webserver')
     parser.add_argument('--listen-port', type=int, required=False, default=8080, help='listen port for webserver')
     args = parser.parse_args()
 

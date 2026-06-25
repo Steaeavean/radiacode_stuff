@@ -141,6 +141,8 @@ class BluetoothBleak:
     def _on_notify(self, _characteristic, data: bytearray) -> None:
         chunk = bytes(data)
         if self._resp_size == 0:
+            if self._resp_future is None:
+                return
             if len(chunk) < 4:
                 return  # malformed first fragment — ignore
             self._resp_size = 4 + struct.unpack('<i', chunk[:4])[0]
@@ -180,6 +182,8 @@ class BluetoothBleak:
                 raise ConnectionClosed(f'BLE error during execute: {exc}') from exc
             finally:
                 self._resp_future = None
+                self._resp_buf = b''
+                self._resp_size = 0
 
             return BytesBuffer(payload)
 
@@ -241,12 +245,15 @@ if _have_bluepy:
 
         def handleNotification(self, chandle, data):
             if self._resp_size == 0:
+                if len(data) < 4:
+                    return
                 self._resp_size = 4 + struct.unpack('<i', data[:4])[0]
                 self._resp_buffer = data[4:]
             else:
                 self._resp_buffer += data
             self._resp_size -= len(data)
-            assert self._resp_size >= 0
+            if self._resp_size < 0:
+                raise ConnectionClosed(f'BLE reassembler underflow: {self._resp_size}')
             if self._resp_size == 0:
                 self._response = self._resp_buffer
                 self._resp_buffer = b''

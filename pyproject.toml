@@ -1,6 +1,6 @@
 [project]
 name = "radiacode"
-version = "0.4.0"
+version = "0.4.1"
 description = "Library for RadiaCode-101/102/103/110 — with macOS BLE support via bleak"
 authors = [{ name = "Maxim Andreev", email = "andreevmaxim@gmail.com" }]
 requires-python = ">=3.10"

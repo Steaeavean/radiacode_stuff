@@ -86,7 +86,8 @@ class RareData:
 class EventId(Enum):
     POWER_OFF = 0
     POWER_ON = 1
-    LOW_BATTERY_SHUTOWN = 2
+    LOW_BATTERY_SHUTDOWN = 2
+    LOW_BATTERY_SHUTOWN = 2  # deprecated alias — typo kept for backward compat
     CHANGE_DEVICE_PARAMS = 3
     DOSE_RESET = 4
     USER_EVENT = 5
@@ -280,7 +281,7 @@ class VSFR(Enum):
     SYS_STATUS = 0xFFFF000B
     SYS_MCU_VREF = 0xFFFF000C
     SYS_MCU_TEMP = 0xFFFF000D
-    SYS_FW_VER_BT = 0xFFFF010
+    SYS_FW_VER_BT = 0xFFFF0010
 
     def __int__(self) -> int:
         return self.value

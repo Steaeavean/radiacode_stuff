@@ -32,6 +32,12 @@ from radiacode.types import (
 )
 
 
+class ProtocolError(Exception):
+    """Raised when the device response does not match the expected protocol framing."""
+
+    pass
+
+
 def spectrum_channel_to_energy(channel_number: int, a0: float, a1: float, a2: float) -> float:
     """Convert spectrometer channel number to energy in keV using quadratic calibration.
 
@@ -113,7 +119,7 @@ class RadiaCode:
         self._base_time = datetime.datetime.now() + datetime.timedelta(seconds=128)
 
         (_, (vmaj, vmin, _)) = self.fw_version()
-        if ignore_firmware_compatibility_check is False and vmaj < 4 or (vmaj == 4 and vmin < 8):
+        if not ignore_firmware_compatibility_check and (vmaj < 4 or (vmaj == 4 and vmin < 8)):
             raise Exception(
                 f'Incompatible firmware version {vmaj}.{vmin}, >=4.8 required. Upgrade device firmware or use radiacode==0.2.2'
             )
@@ -123,6 +129,16 @@ class RadiaCode:
             if line.startswith('SpecFormatVersion'):
                 self._spectrum_format_version = int(line.split('=')[1])
                 break
+
+    def close(self) -> None:
+        """Release the device connection (USB or BLE)."""
+        self._connection.close()
+
+    def __enter__(self) -> 'RadiaCode':
+        return self
+
+    def __exit__(self, *_) -> None:
+        self.close()
 
     def base_time(self) -> datetime.datetime:
         return self._base_time
@@ -137,25 +153,30 @@ class RadiaCode:
 
         response = self._connection.execute(full_request)
         resp_header = response.unpack('<4s')[0]
-        assert req_header == resp_header, f'req={req_header.hex()} resp={resp_header.hex()}'
+        if req_header != resp_header:
+            raise ProtocolError(f'echo header mismatch req={req_header.hex()} resp={resp_header.hex()}')
         return response
 
     def read_request(self, command_id: int | VS | VSFR) -> BytesBuffer:
         r = self.execute(COMMAND.RD_VIRT_STRING, struct.pack('<I', int(command_id)))
         retcode, flen = r.unpack('<II')
-        assert retcode == 1, f'{command_id}: got retcode {retcode}'
+        if retcode != 1:
+            raise ProtocolError(f'{command_id}: got retcode {retcode}')
         # HACK: workaround for new firmware bug(?)
         if r.size() == flen + 1 and r._data[-1] == 0x00:
             r._data = r._data[:-1]
         # END OF HACK
-        assert r.size() == flen, f'{command_id}: got size {r.size()}, expect {flen}'
+        if r.size() != flen:
+            raise ProtocolError(f'{command_id}: got size {r.size()}, expect {flen}')
         return r
 
     def write_request(self, command_id: int | VSFR, data: Optional[bytes] = None) -> None:
         r = self.execute(COMMAND.WR_VIRT_SFR, struct.pack('<I', int(command_id)) + (data or b''))
         retcode = r.unpack('<I')[0]
-        assert retcode == 1
-        assert r.size() == 0
+        if retcode != 1:
+            raise ProtocolError(f'{command_id}: got retcode {retcode}')
+        if r.size() != 0:
+            raise ProtocolError(f'{command_id}: expected empty response, got size {r.size()}')
 
     def batch_read_vsfrs(self, vsfr_ids: list[VSFR]) -> list[int | float]:
         """Read multiple VSFRs
@@ -219,6 +240,7 @@ class RadiaCode:
                 The time components used are: year, month, day, hour, minute, second.
                 Microseconds are ignored.
         """
+        # year - 2000 fits in one byte: valid range 2000–2255; Y2256 wraps silently
         d = struct.pack('<BBBBBBBB', dt.day, dt.month, dt.year - 2000, 0, dt.second, dt.minute, dt.hour, 0)
         self.execute(COMMAND.SET_TIME, d)
 
