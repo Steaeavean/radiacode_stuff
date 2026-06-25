@@ -267,6 +267,19 @@ class RadiaCode:
         assert r.size() == 0
         return ((boot_major, boot_minor, boot_date), (target_major, target_minor, target_date.strip('\x00')))
 
+    def bt_fw_version(self) -> tuple[int, int]:
+        """Get Bluetooth module firmware version (VSFR ``SYS_FW_VER_BT``, ``0xFFFF0010``).
+
+        The register is a little-endian ``uint32``; major and minor are the second
+        and first bytes respectively (validated on RC-101 MCU 4.14: raw ``0x723`` →
+        7.35).
+
+        Returns:
+            tuple[int, int]: ``(major, minor)``
+        """
+        (raw,) = self.batch_read_vsfrs([VSFR.SYS_FW_VER_BT])
+        return (raw >> 8) & 0xFF, raw & 0xFF
+
     def hw_serial_number(self) -> str:
         """Get hardware serial number.
 

@@ -350,6 +350,7 @@ _VSFR_FORMATS: dict = {
     VSFR.SYS_STATUS: 'I',
     VSFR.SYS_MCU_VREF: 'i',
     VSFR.SYS_MCU_TEMP: 'i',
+    VSFR.SYS_FW_VER_BT: 'I',
     VSFR.DPOT_RDAC: '3xB',
     VSFR.DPOT_RDAC_EEPROM: '3xB',
     VSFR.DPOT_TOLER: '3xB',
