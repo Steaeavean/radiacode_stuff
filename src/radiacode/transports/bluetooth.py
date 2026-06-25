@@ -11,13 +11,13 @@ compatibility; prefer the named classes when selecting programmatically.
 """
 
 import asyncio
-import struct
 import threading
 import time
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from radiacode.bytes_buffer import BytesBuffer
+from radiacode.transports.reassembler import BleReassembler, ReassemblerUnderflow
 
 
 # GATT profile (docs/radiacode-ble-protocol.md §2)
@@ -76,8 +76,7 @@ class BluetoothBleak:
         self._ble_thread.start()
 
         # Notification reassembler — only mutated from the loop thread
-        self._resp_buf: bytes = b''
-        self._resp_size: int = 0
+        self._reassembler = BleReassembler()
         self._resp_future: Optional[asyncio.Future] = None
 
         try:
@@ -140,20 +139,12 @@ class BluetoothBleak:
 
     def _on_notify(self, _characteristic, data: bytearray) -> None:
         chunk = bytes(data)
-        if self._resp_size == 0:
-            if self._resp_future is None:
-                return
-            if len(chunk) < 4:
-                return  # malformed first fragment — ignore
-            self._resp_size = 4 + struct.unpack('<i', chunk[:4])[0]
-            self._resp_buf = chunk[4:]
-        else:
-            self._resp_buf += chunk
-        self._resp_size -= len(chunk)
-        if self._resp_size <= 0:
-            payload = self._resp_buf
-            self._resp_buf = b''
-            self._resp_size = 0
+        armed = self._resp_future is not None
+        try:
+            payload = self._reassembler.feed(chunk, armed=armed)
+        except ReassemblerUnderflow as exc:
+            raise ConnectionClosed(f'BLE reassembler underflow: {exc.args[0]}') from exc
+        if payload is not None:
             fut = self._resp_future
             if fut is not None and not fut.done():
                 fut.set_result(payload)
@@ -165,8 +156,7 @@ class BluetoothBleak:
 
         async with self._lock:
             # Arm reassembler BEFORE writing so no notification is missed
-            self._resp_buf = b''
-            self._resp_size = 0
+            self._reassembler.reset()
             self._resp_future = self._loop.create_future()
             try:
                 # §3.1: slice request into ≤18-byte writes
@@ -182,8 +172,7 @@ class BluetoothBleak:
                 raise ConnectionClosed(f'BLE error during execute: {exc}') from exc
             finally:
                 self._resp_future = None
-                self._resp_buf = b''
-                self._resp_size = 0
+                self._reassembler.reset()
 
             return BytesBuffer(payload)
 
@@ -225,8 +214,7 @@ if _have_bluepy:
         """Synchronous BLE transport using bluepy (Linux only)."""
 
         def __init__(self, mac: str, poll_interval: float = 0.01):
-            self._resp_buffer = b''
-            self._resp_size = 0
+            self._reassembler = BleReassembler()
             self._response = None
             self._closing = False
             self._poll_interval = poll_interval
@@ -244,24 +232,20 @@ if _have_bluepy:
             self.p.writeCharacteristic(notify_fd + 1, b'\x01\x00')
 
         def handleNotification(self, chandle, data):
-            if self._resp_size == 0:
-                if len(data) < 4:
-                    return
-                self._resp_size = 4 + struct.unpack('<i', data[:4])[0]
-                self._resp_buffer = data[4:]
-            else:
-                self._resp_buffer += data
-            self._resp_size -= len(data)
-            if self._resp_size < 0:
-                raise ConnectionClosed(f'BLE reassembler underflow: {self._resp_size}')
-            if self._resp_size == 0:
-                self._response = self._resp_buffer
-                self._resp_buffer = b''
+            try:
+                payload = self._reassembler.feed(bytes(data), armed=True)
+            except ReassemblerUnderflow as exc:
+                raise ConnectionClosed(f'BLE reassembler underflow: {exc.args[0]}') from exc
+            if payload is not None:
+                self._response = payload
+                self._reassembler.reset()
 
         def execute(self, req) -> '_BytesBuffer':
             if self._closing:
                 raise ConnectionClosed('Connection is closing')
 
+            self._reassembler.reset()
+            self._response = None
             for pos in range(0, len(req), 18):
                 self.p.writeCharacteristic(self.write_fd, req[pos : min(pos + 18, len(req))])
 

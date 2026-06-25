@@ -13,6 +13,13 @@ These example projects are installed with the library when you run
 | `--bluetooth-address UUID` | macOS, Windows, Linux | Connect to specific device by CoreBluetooth UUID or address |
 | `--bluetooth-mac AA:BB:CC...` | Linux only | Connect via bluepy MAC address |
 
+### Security (webserver example)
+
+The web dashboard listens on **`127.0.0.1` by default** (loopback only). If you pass
+`--listen-host 0.0.0.0` to expose it on the LAN, note that **`POST /spectrum/reset` has
+no authentication** — anyone who can reach the port can reset the device spectrum.
+Use only on a trusted network; do not expose this example to the public Internet.
+
 ---
 
 ### 1. [basic.py](./basic.py)

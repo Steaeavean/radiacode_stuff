@@ -63,6 +63,20 @@ class DoseRateDB:
 
 
 @dataclass
+class DoseCounter:
+    """Diagnostic accumulated-dose counter from GRP_DoseCounter (eid/gid 0/4).
+
+    ``dose_counter`` is in micro-roentgen (µR); nSv ≈ ``dose_counter * 10``.
+    This is **not** the display accumulated dose — use ``RareData.dose`` (0/3)
+    for on-screen dose (see radiacode-ble-protocol.md §9.2 / H18).
+    """
+
+    dt: datetime.datetime
+    dose_counter: int
+    flags: int
+
+
+@dataclass
 class RareData:
     """Periodic device status and accumulated dose data.
 

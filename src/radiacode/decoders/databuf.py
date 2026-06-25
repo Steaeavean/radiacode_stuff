@@ -1,13 +1,13 @@
 import datetime
 
 from radiacode.bytes_buffer import BytesBuffer
-from radiacode.types import DoseRateDB, Event, EventId, RareData, RawData, RealTimeData
+from radiacode.types import DoseCounter, DoseRateDB, Event, EventId, RareData, RawData, RealTimeData
 
 
 def decode_VS_DATA_BUF(
     br: BytesBuffer, base_time: datetime.datetime, ignore_errors: bool = True
-) -> list[RealTimeData | DoseRateDB | RareData | RawData | Event]:
-    ret: list[RealTimeData | DoseRateDB | RareData | RawData | Event] = []
+) -> list[RealTimeData | DoseRateDB | RareData | RawData | DoseCounter | Event]:
+    ret: list[RealTimeData | DoseRateDB | RareData | RawData | DoseCounter | Event] = []
     next_seq = None
     while br.size() >= 7:
         seq, eid, gid, ts_offset = br.unpack('<BBBi')
@@ -64,18 +64,23 @@ def decode_VS_DATA_BUF(
                     flags=flags,
                 )
             )
-        elif eid == 0 and gid == 4:  # GRP_UserData:
+        elif eid == 0 and gid == 4:  # GRP_DoseCounter (6 bytes — NOT upstream UserData)
+            dose_counter, flags = br.unpack('<IH')
+            ret.append(
+                DoseCounter(
+                    dt=dt,
+                    dose_counter=dose_counter,
+                    flags=flags,
+                )
+            )
+        elif eid == 0 and gid == 5:  # GRP_SheduleData
             try:
                 count, count_rate, dose_rate, dose_rate_err, flags = br.unpack('<IffHH')
             except ValueError as e:
                 if ignore_errors:
                     print(f'BytesBuffer error while decoding {eid=}/{gid=} [{br.data().hex(" ")}]')
                     break
-                else:
-                    raise e
-            # TODO
-        elif eid == 0 and gid == 5:  # GRP_SheduleData
-            count, count_rate, dose_rate, dose_rate_err, flags = br.unpack('<IffHH')
+                raise e
             # TODO
         elif eid == 0 and gid == 6:  # GRP_AccelData
             acc_x, acc_y, acc_z = br.unpack('<HHH')

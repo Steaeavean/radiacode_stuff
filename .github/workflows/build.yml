@@ -26,10 +26,16 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
 
+      - name: Install dependencies
+        run: uv sync
+
       - name: Ruff check + format
         run: |
           uv run ruff check
           uv run ruff format --check
+
+      - name: Unit tests
+        run: uv run pytest -q
 
   # ── Test matrix (macOS + Linux, Python 3.10 & 3.13) ─────────────────────
   test:
@@ -55,6 +61,9 @@ jobs:
 
       - name: Install dependencies
         run: uv sync
+
+      - name: Unit tests
+        run: uv run pytest -q
 
       - name: Import smoke test
         run: |

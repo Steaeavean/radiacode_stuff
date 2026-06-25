@@ -43,7 +43,8 @@ def decode_counts_v1(br: BytesBuffer) -> list[int]:
 def decode_RC_VS_SPECTRUM(br: BytesBuffer, format_version: int) -> Spectrum:
     ts, a0, a1, a2 = br.unpack('<Ifff')
 
-    assert format_version in {0, 1}, f'unspported format_version={format_version}'
+    if format_version not in {0, 1}:
+        raise ValueError(f'unsupported format_version={format_version}')
     counts = decode_counts_v0(br) if format_version == 0 else decode_counts_v1(br)
 
     return Spectrum(

@@ -23,6 +23,7 @@ from radiacode.types import (
     VSFR,
     AlarmLimits,
     DisplayDirection,
+    DoseCounter,
     DoseRateDB,
     Event,
     RareData,
@@ -223,13 +224,15 @@ class RadiaCode:
                 if x is not None:
                     ret.append(x)
 
-        assert r.size() == 0
+        if r.size() != 0:
+            raise ProtocolError(f'batch_read_vsfrs: expected empty trailing data, got size {r.size()}')
         return ret
 
     def status(self) -> str:
         r = self.execute(COMMAND.GET_STATUS)
         flags = r.unpack('<I')
-        assert r.size() == 0
+        if r.size() != 0:
+            raise ProtocolError(f'GET_STATUS: expected empty response, got size {r.size()}')
         return f'status flags: {flags}'
 
     def set_local_time(self, dt: datetime.datetime) -> None:
@@ -264,7 +267,8 @@ class RadiaCode:
         boot_date = r.unpack_string()
         target_minor, target_major = r.unpack('<HH')
         target_date = r.unpack_string()
-        assert r.size() == 0
+        if r.size() != 0:
+            raise ProtocolError(f'GET_VERSION: expected empty response, got size {r.size()}')
         return ((boot_major, boot_minor, boot_date), (target_major, target_minor, target_date.strip('\x00')))
 
     def bt_fw_version(self) -> tuple[int, int]:
@@ -289,9 +293,11 @@ class RadiaCode:
         """
         r = self.execute(COMMAND.GET_SERIAL)
         serial_len = r.unpack('<I')[0]
-        assert serial_len % 4 == 0
+        if serial_len % 4 != 0:
+            raise ProtocolError(f'GET_SERIAL: serial_len {serial_len} is not a multiple of 4')
         serial_groups = [r.unpack('<I')[0] for _ in range(serial_len // 4)]
-        assert r.size() == 0
+        if r.size() != 0:
+            raise ProtocolError(f'GET_SERIAL: expected empty response, got size {r.size()}')
         return '-'.join(f'{v:08X}' for v in serial_groups)
 
     def configuration(self) -> str:
@@ -324,7 +330,7 @@ class RadiaCode:
         """
         self.write_request(VSFR.DEVICE_TIME, struct.pack('<I', v))
 
-    def data_buf(self) -> list[DoseRateDB | RareData | RealTimeData | RawData | Event]:
+    def data_buf(self) -> list[DoseRateDB | RareData | RealTimeData | RawData | DoseCounter | Event]:
         """Get buffered measurement data from the device."""
         r = self.read_request(VS.DATA_BUF)
         return decode_VS_DATA_BUF(r, self._base_time)
@@ -362,8 +368,10 @@ class RadiaCode:
         """
         r = self.execute(COMMAND.WR_VIRT_STRING, struct.pack('<II', int(VS.SPECTRUM), 0))
         retcode = r.unpack('<I')[0]
-        assert retcode == 1
-        assert r.size() == 0
+        if retcode != 1:
+            raise ProtocolError(f'spectrum_reset: got retcode {retcode}')
+        if r.size() != 0:
+            raise ProtocolError(f'spectrum_reset: expected empty response, got size {r.size()}')
 
     def energy_calib(self) -> list[float]:
         """Get the energy calibration coefficients.
@@ -390,7 +398,8 @@ class RadiaCode:
         pc = struct.pack('<fff', *coef)
         r = self.execute(COMMAND.WR_VIRT_STRING, struct.pack('<II', int(VS.ENERGY_CALIB), len(pc)) + pc)
         retcode = r.unpack('<I')[0]
-        assert retcode == 1
+        if retcode != 1:
+            raise ProtocolError(f'set_energy_calib: got retcode {retcode}')
 
     def set_language(self, lang='ru') -> None:
         """Set the device interface language.

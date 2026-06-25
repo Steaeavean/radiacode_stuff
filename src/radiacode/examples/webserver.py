@@ -1,3 +1,9 @@
+"""Real-time RadiaCode web dashboard (spectrum + dose-rate WebSocket).
+
+Security: default listen host is 127.0.0.1. ``POST /spectrum/reset`` has no
+authentication — unsafe if ``--listen-host 0.0.0.0`` is used on an untrusted network.
+"""
+
 import argparse
 import asyncio
 import json
