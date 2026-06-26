@@ -54,6 +54,30 @@ def spectrum_channel_to_energy(channel_number: int, a0: float, a1: float, a2: fl
     return a0 + a1 * channel_number + a2 * channel_number * channel_number
 
 
+def alarm_limits_from_raw_registers(raw: list[int]) -> AlarmLimits:
+    """Build ``AlarmLimits`` from eight raw ``RD_VIRT_SFR_BATCH`` uint32 words.
+
+    Order: CR_L1, CR_L2, DR_L1, DR_L2, DS_L1, DS_L2, DS_UNITS, CR_UNITS.
+    ``DS_UNITS`` / ``CR_UNITS`` use the low byte only (protocol §11.4).
+    """
+    if len(raw) != 8:
+        raise ValueError(f'alarm_limits_from_raw_registers: expected 8 words, got {len(raw)}')
+    ds_sv = bool(raw[6] & 0x1)
+    cr_cpm = bool(raw[7] & 0x1)
+    dose_multiplier = 100 if ds_sv else 1
+    count_multiplier = 60 if cr_cpm else 1
+    return AlarmLimits(
+        l1_count_rate=raw[0] / 10 * count_multiplier,
+        l2_count_rate=raw[1] / 10 * count_multiplier,
+        l1_dose_rate=raw[2] / dose_multiplier,
+        l2_dose_rate=raw[3] / dose_multiplier,
+        l1_dose=raw[4] / 1e6 / dose_multiplier,
+        l2_dose=raw[5] / 1e6 / dose_multiplier,
+        dose_unit='Sv' if ds_sv else 'R',
+        count_unit='cpm' if cr_cpm else 'cps',
+    )
+
+
 class RadiaCode:
     _connection: BluepyBluetooth | BluetoothBleak | Usb
 
@@ -227,6 +251,23 @@ class RadiaCode:
         if r.size() != 0:
             raise ProtocolError(f'batch_read_vsfrs: expected empty trailing data, got size {r.size()}')
         return ret
+
+    def batch_read_raw_u32(self, vsfr_ids: list[VSFR]) -> list[int]:
+        """Read VSFRs via batch command; return raw little-endian uint32 words."""
+        nvsfr = len(vsfr_ids)
+        if nvsfr == 0:
+            raise ValueError('No VSFRs specified')
+        msg = [struct.pack('<I', nvsfr)]
+        msg.extend([struct.pack('<I', int(c)) for c in vsfr_ids])
+        r = self.execute(COMMAND.RD_VIRT_SFR_BATCH, b''.join(msg))
+        valid_flags = r.unpack('<I')[0]
+        expected_flags = (1 << nvsfr) - 1
+        if valid_flags != expected_flags:
+            raise ValueError(f'Unexpected validity flags, bad vsfr_id? {valid_flags:08b} != {expected_flags:08b}')
+        tmp = r.unpack(f'<{nvsfr}I')
+        if r.size() != 0:
+            raise ProtocolError(f'batch_read_raw_u32: expected empty trailing data, got size {r.size()}')
+        return list(tmp)
 
     def status(self) -> str:
         r = self.execute(COMMAND.GET_STATUS)
@@ -500,21 +541,7 @@ class RadiaCode:
             VSFR.DS_UNITS,
             VSFR.CR_UNITS,
         ]
-
-        resp = self.batch_read_vsfrs(regs)
-
-        dose_multiplier = 100 if resp[6] else 1
-        count_multiplier = 60 if resp[7] else 1
-        return AlarmLimits(
-            l1_count_rate=resp[0] / 10 * count_multiplier,
-            l2_count_rate=resp[1] / 10 * count_multiplier,
-            l1_dose_rate=resp[2] / dose_multiplier,
-            l2_dose_rate=resp[3] / dose_multiplier,
-            l1_dose=resp[4] / 1e6 / dose_multiplier,
-            l2_dose=resp[5] / 1e6 / dose_multiplier,
-            dose_unit='Sv' if resp[6] else 'R',
-            count_unit='cpm' if resp[7] else 'cps',
-        )
+        return alarm_limits_from_raw_registers(self.batch_read_raw_u32(regs))
 
     def set_alarm_limits(
         self,

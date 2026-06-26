@@ -1,6 +1,6 @@
 [project]
 name = "radiacode"
-version = "0.4.3"
+version = "0.4.4"
 description = "Library for RadiaCode-101/102/103/110 — with macOS BLE support via bleak"
 authors = [{ name = "Maxim Andreev", email = "andreevmaxim@gmail.com" }]
 requires-python = ">=3.10"
@@ -51,7 +51,7 @@ line-length = 130
 target-version = "py310"
 # phase0/ contains research/validation scripts not subject to library lint rules.
 # timesync.py is a standalone utility without strict style requirements.
-exclude = ["phase0", "timesync.py"]
+exclude = ["phase0", "timesync.py", "alarm_probe_lib.py", "read_alarm_limits.py", "validate_alarm_limits.py"]
 
 [tool.ruff.lint]
 extend-select = ["B", "Q"]
