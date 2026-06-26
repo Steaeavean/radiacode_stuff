@@ -64,3 +64,16 @@ class Usb:
             data += r
 
         return BytesBuffer(data)
+
+    def close(self) -> None:
+        """Release USB handles (no-op safe if already closed)."""
+        device = getattr(self, '_device', None)
+        if device is None:
+            return
+        try:
+            import usb.util
+
+            usb.util.dispose_resources(device)
+        except Exception:
+            pass
+        self._device = None
