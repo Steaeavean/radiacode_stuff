@@ -76,7 +76,7 @@ Scripts: `read_alarm_limits.py`, `validate_alarm_limits.py`. Library **0.4.4** (
 | H12 | ✅* | `ALARM_MODE=0` (Once) |
 | H13 | ✅ | Fixture compare exit 0 |
 | H14 | ✅ | int 35 → float 4.905e-44 |
-| H15 | ⏳ | USB connect failed on test Mac; BLE-only sufficient for iOS |
+| H15 | ✅ | USB 2026-06-26: `alarm_raw`/`alarm_decoded` identical BLE↔USB; diff only `transport`/`captured_at` + stale BLE JSON library block (pre-0.4.4) |
 | H16 | ✅ | Post-restore snapshot match |
 
 **atomapp-ios gate (BLE): CLOSED** — H1–H9 + H13 ✅ on RC-101-005265.
@@ -120,7 +120,7 @@ Scripts: `read_alarm_limits.py`, `validate_alarm_limits.py`. Library **0.4.4** (
 ## Результаты прогона (RC-101-005265, 2026-06-26)
 
 См. таблицу в English-секции выше. H8 подтверждён на железе в **0.4.4** (все 8 sub-checks PASS).
-H15 (USB) не проверен — для iOS достаточно BLE. **Ворота atomapp-ios (BLE): закрыты.**
+H15 (USB) подтверждён 2026-06-26: сырые регистры порогов на USB = BLE. **Ворота atomapp-ios (BLE): закрыты.**
 
 ---
 
