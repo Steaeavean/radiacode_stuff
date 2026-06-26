@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-06-19T04:43:42.027368Z"
+exclude-newer = "2026-06-19T04:49:06.44909Z"
 exclude-newer-span = "P1W"
 
 [[package]]
@@ -1655,7 +1655,7 @@ wheels = [
 
 [[package]]
 name = "radiacode"
-version = "0.4.4"
+version = "0.4.5"
 source = { editable = "." }
 dependencies = [
     { name = "bleak", marker = "sys_platform != 'linux'" },
